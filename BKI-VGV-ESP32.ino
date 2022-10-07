@@ -8,10 +8,10 @@
 #define CMD_TO_SWEEP          0x11
 #define END_BYTE              0x0D
 
-const char* ssid = "Wab";
-const char* password = "RaisaITS";
+const char* ssid = "BKI_VGV_Device";
+const char* password = "1234567890";
 
-const char* udpAddr = "192.168.182.126";
+const char* udpAddr = "192.168.0.12";
 const int udpPort = 3333;
 
 bool connected = false;
@@ -23,9 +23,9 @@ byte lowbyte;
 
 byte checksum;
 
-IPAddress local_IP(192, 168, 182, 184);
-IPAddress gateway(192, 168, 182, 1);
-IPAddress subnet(255, 255, 0, 0);
+IPAddress local_IP(192, 168, 0, 111);
+IPAddress gateway(192, 168, 0, 1);
+IPAddress subnet(255, 255, 255, 0);
 
 WiFiManager wm;
 WiFiUDP udp;
@@ -113,7 +113,7 @@ void loop() {
               packetBuf[3] = lowbyte;
               packetBuf[4] = checksum;
               packetBuf[5] = END_BYTE;
-              udp.beginPacket(udpAddr, udpPort);
+              udp.beginPacket(udp.remoteIP(), udpPort);
               udp.write(packetBuf, sizeof(packetBuf));
               udp.endPacket();
 
@@ -139,6 +139,10 @@ void loop() {
 float getLidarData(){
   float dist;
   dist = (float)garminv3.distance() / 100;
+
+  if (dist <= 0.05){
+    dist = 9999.0;
+  }
   
   return dist;
 }
