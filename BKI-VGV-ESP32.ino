@@ -23,6 +23,9 @@ byte lowbyte;
 
 byte checksum;
 
+float lidardeg_f;
+short lidardeg_s;
+
 IPAddress local_IP(192, 168, 0, 111);
 IPAddress gateway(192, 168, 0, 1);
 IPAddress subnet(255, 255, 255, 0);
@@ -34,7 +37,7 @@ LIDARLite garminv3;
 
 float lidar_m;
 short lidar_cm;
-uint8_t packetBuf[6];
+uint8_t packetBuf[8];
 
 void setup() {
     WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
@@ -82,47 +85,51 @@ void loop() {
       switch (packetBuf[1]){
         case 0x11:
           sweeping_done = false;
-          int startdeg = packetBuf[2];
-          int enddeg = packetBuf[3]; 
+          short startdeg = packetBuf[2];
+          short enddeg = packetBuf[3]; 
           Serial.print("Start Deg : ");
           Serial.print(startdeg);
           Serial.print("End Deg : ");
           Serial.println(enddeg);
           if(startdeg < enddeg){
-            lidardeg = startdeg;
+            lidardeg_f = startdeg;
             while(!sweeping_done){
-              setPan(lidardeg);
-              delay(50);
+              setPan(lidardeg_f);
+              delay(20);
               // lidar_m = getLidarData();
               lidar_cm = garminv3.distance();
+              if(lidar_cm == 1){
+                lidar_cm = 99999;
+              }
+              lidardeg_s = lidardeg_f * 10;
+              // highbyte = lidar_cm >> 8;
+              // lowbyte = lidar_cm & 0xFF;
 
-              highbyte = lidar_cm >> 8;
-              lowbyte = lidar_cm & 0xFF;
-
-              checksum = lidardeg ^ highbyte ^ lowbyte;
+              // checksum = lidardeg ^ highbyte ^ lowbyte;
             
               Serial.print("Sweeping...");
               Serial.print("Lidar Deg = ");
-              Serial.print(lidardeg);
+              Serial.print(lidardeg_f);
               Serial.print("Lidar Distance : ");
               Serial.println(lidar_cm);
               memset(packetBuf, 0, sizeof(packetBuf));
               packetBuf[0] = 0x33;
-              packetBuf[1] = lidardeg;
-              packetBuf[2] = highbyte;
-              packetBuf[3] = lowbyte;
-              packetBuf[4] = checksum;
-              packetBuf[5] = END_BYTE;
+              memcpy(packetBuf + 1, &lidardeg_s, 2);
+              memcpy(packetBuf + 3, &lidar_cm, 2);
+              checksum = lidardeg_s ^ lidar_cm;
+              memcpy(packetBuf + 5, &checksum, 2);
+              packetBuf[7] = END_BYTE;
               udp.beginPacket(udp.remoteIP(), udpPort);
               udp.write(packetBuf, sizeof(packetBuf));
               udp.endPacket();
 
-              if(lidardeg == enddeg){
+              if(lidardeg_f == enddeg){
                 sweeping_done = true;
                 Serial.println("SWEEPING DONE");
+                setPan(150);
               }
-              lidardeg++;
-              delay(50);
+              lidardeg_f += 0.5;
+              delay(30);
             }            
           }else{
             Serial.println("Invalid START & END DEG");
@@ -136,32 +143,21 @@ void loop() {
     delay(100);
 ;}
 
-float getLidarData(){
-  float dist;
-  dist = (float)garminv3.distance() / 100;
+// float getLidarData(){
+//   float dist;
+//   dist = (float)garminv3.distance() / 100;
 
-  if (dist <= 0.05){
-    dist = 9999.0;
-  }
+//   if (dist <= 0.05){
+//     dist = 9999.0;
+//   }
   
-  return dist;
-}
+//   return dist;
+// }
 
-int angle2raw(int angle){
+int angle2raw(float angle){
   int raw;
   raw = (angle * 1023 / 300);
   return raw;
-}
-
-void setPan(int angle){
-  int raw_cmd;
-  if(angle < 70) angle = 70;
-  if(angle > 230) angle = 230;
-
-  raw_cmd = angle2raw(angle);
-  Dynamixel.move(1, raw_cmd);
-  Dynamixel.ledStatus(1, ON);
-  Dynamixel.action();
 }
 
 // void setPan(int angle){
@@ -169,8 +165,20 @@ void setPan(int angle){
 //   if(angle < 70) angle = 70;
 //   if(angle > 230) angle = 230;
 
-//   // raw_cmd = angle2raw(angle);
-//   Dynamixel.move(1, angle);
+//   raw_cmd = angle2raw(angle);
+//   Dynamixel.move(1, raw_cmd);
 //   Dynamixel.ledStatus(1, ON);
 //   Dynamixel.action();
 // }
+
+void setPan(float angle){
+  int raw_cmd;
+  if(angle < 70) angle = 70;
+  if(angle > 230) angle = 230;
+
+  raw_cmd = angle2raw(angle);
+  Serial.println(raw_cmd);
+  Dynamixel.move(1, raw_cmd);
+  Dynamixel.ledStatus(1, ON);
+  Dynamixel.action();
+}
