@@ -17,10 +17,6 @@ const int udpPort = 3333;
 bool connected = false;
 bool sweeping_done = false;
 
-byte lidardeg;
-byte highbyte;
-byte lowbyte;
-
 byte checksum;
 
 float lidardeg_f;
@@ -62,7 +58,7 @@ void setup() {
     wm.setConfigPortalTimeout(60);
     //automatically connect using saved credentials if they exist
     //If connection fails it starts an access point with the specified name
-    if(wm.autoConnect("AutoConnectAP")){
+    if(wm.autoConnect("BKI-VGV-Length")){
         Serial.println("connected...yeey :)");
     }
     else {
@@ -102,11 +98,6 @@ void loop() {
                 lidar_cm = 99999;
               }
               lidardeg_s = lidardeg_f * 10;
-              // highbyte = lidar_cm >> 8;
-              // lowbyte = lidar_cm & 0xFF;
-
-              // checksum = lidardeg ^ highbyte ^ lowbyte;
-            
               Serial.print("Sweeping...");
               Serial.print("Lidar Deg = ");
               Serial.print(lidardeg_f);
@@ -143,16 +134,6 @@ void loop() {
     delay(100);
 ;}
 
-// float getLidarData(){
-//   float dist;
-//   dist = (float)garminv3.distance() / 100;
-
-//   if (dist <= 0.05){
-//     dist = 9999.0;
-//   }
-  
-//   return dist;
-// }
 
 int angle2raw(float angle){
   int raw;
